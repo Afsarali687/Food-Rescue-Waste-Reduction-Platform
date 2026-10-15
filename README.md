@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Food Rescue & Waste Reduction Platform Using MongoDB
 
 [![Coursework CA2](https://img.shields.io/badge/Coursework-College%20CA2%20Project-success.svg)](#)
@@ -482,3 +483,7 @@ Before submitting or pushing code to your repository:
 - [x] **No Raw XSS Vulnerabilities:** Zero unescaped `| safe` template filters.
 - [x] **No Unsafe State Changes via GET:** Mutation routes enforce `POST` only.
 - [x] **Clean Repository State:** No temporary scratch files, test dumps, or `__pycache__` committed.
+=======
+# Food-Rescue-Waste-Reduction-Platform
+A MongoDB-based platform to connect surplus food providers with NGOs and reduce food waste.
+>>>>>>> origin/main
