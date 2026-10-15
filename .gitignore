@@ -1,0 +1,19 @@
+# Environment & Secrets
+.env
+.env.local
+
+# Python Environments & caches
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pytest_cache/
+.coverage
+htmlcov/
+
+# Operating System files
+.DS_Store
+Thumbs.db

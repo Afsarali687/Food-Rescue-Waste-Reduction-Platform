@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% block title %}Post Surplus Food Donation{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="custom-breadcrumb">
+  <a href="{{ url_for('main.index') }}"><i class="bi bi-house-door me-1"></i>Home</a>
+  <span class="separator">/</span>
+  <a href="{{ url_for('main.listings') }}">Food Listings</a>
+  <span class="separator">/</span>
+  <span class="text-dark fw-semibold">Add New Donation</span>
+</nav>
+
+<div class="row justify-content-center">
+  <div class="col-lg-9 col-xl-8">
+    <div class="panel-card shadow-sm">
+      <div class="d-flex align-items-center gap-3 mb-4 pb-3 border-bottom">
+        <div class="stat-icon green" style="width:48px; height:48px; font-size:1.4rem;">
+          <i class="bi bi-plus-circle-fill"></i>
+        </div>
+        <div>
+          <h1 class="h3 fw-bold mb-1">List Surplus Food</h1>
+          <p class="text-muted small mb-0">Publish surplus food from your canteen, mess, or restaurant for verified NGO pickup.</p>
+        </div>
+      </div>
+
+      <form method="post" action="{{ url_for('main.create_food') }}" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <!-- Section 1: Food Details -->
+
+        <h5 class="fw-bold text-success mb-3">
+          <i class="bi bi-card-heading me-1"></i>1. Food Information
+        </h5>
+        
+        <div class="mb-3">
+          <label class="form-label" for="title">Food Title / Item Name <span class="required-mark">*</span></label>
+          <input 
+            type="text" 
+            class="form-control" 
+            id="title" 
+            name="title" 
+            required 
+            placeholder="e.g. Vegetarian Thali Boxes, Bread Loaves, Fresh Apples"
+            value="{{ form.get('title', '') }}"
+          >
+          <div class="form-text">Provide a concise, descriptive name indicating the type of food.</div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <label class="form-label" for="category">Category <span class="required-mark">*</span></label>
+            <select class="form-select" id="category" name="category" required>
+              <option value="">Select a category...</option>
+              {% for c in categories %}
+                <option value="{{ c }}" {{ 'selected' if form.get('category') == c else '' }}>{{ c }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label" for="provider_name">Provider / Canteen Name <span class="required-mark">*</span></label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="provider_name" 
+              name="provider_name" 
+              required 
+              placeholder="e.g. Main Hostel Canteen, Sunrise Bakery"
+              value="{{ form.get('provider_name', '') }}"
+            >
+          </div>
+        </div>
+
+        <!-- Section 2: Quantity & Timing -->
+        <h5 class="fw-bold text-success mb-3 pt-2 border-top">
+          <i class="bi bi-clock-history me-1"></i>2. Quantity & Pickup Schedule
+        </h5>
+
+        <div class="row g-3 mb-4">
+          <div class="col-md-4">
+            <label class="form-label" for="quantity">Quantity <span class="required-mark">*</span></label>
+            <input 
+              type="number" 
+              class="form-control" 
+              id="quantity" 
+              name="quantity" 
+              min="1" 
+              required 
+              placeholder="e.g. 20"
+              value="{{ form.get('quantity', '10') }}"
+            >
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="unit">Quantity Unit <span class="required-mark">*</span></label>
+            <select class="form-select" id="unit" name="unit" required>
+              {% for u in units %}
+                <option value="{{ u }}" {{ 'selected' if form.get('unit', 'servings') == u else '' }}>{{ u }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label" for="expiry_time">Expiry Time <span class="required-mark">*</span></label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="expiry_time" 
+              name="expiry_time" 
+              required 
+              placeholder="e.g. Today, 8:00 PM"
+              value="{{ form.get('expiry_time', '') }}"
+            >
+            <div class="form-text">Estimated time when food should be consumed.</div>
+          </div>
+
+          <div class="col-12">
+            <label class="form-label" for="pickup_deadline">Pickup Deadline <span class="required-mark">*</span></label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="pickup_deadline" 
+              name="pickup_deadline" 
+              placeholder="e.g. Today by 6:30 PM (recommend 1 hour before expiry)"
+              value="{{ form.get('pickup_deadline', '') }}"
+            >
+            <div class="form-text">Cut-off time for recipients to collect the donation.</div>
+          </div>
+        </div>
+
+        <!-- Section 3: Logistics & Contact -->
+        <h5 class="fw-bold text-success mb-3 pt-2 border-top">
+          <i class="bi bi-geo-alt me-1"></i>3. Location & Contact Details
+        </h5>
+
+        <div class="mb-3">
+          <label class="form-label" for="location">Pickup Location <span class="required-mark">*</span></label>
+          <input 
+            type="text" 
+            class="form-control" 
+            id="location" 
+            name="location" 
+            required 
+            placeholder="e.g. Dining Hall Counter 2, Student Union Building, Ground Floor"
+            value="{{ form.get('location', '') }}"
+          >
+          <div class="form-text">Be specific to help pickup teams locate your staff easily.</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="description">Additional Notes / Storage Guidelines</label>
+          <textarea 
+            class="form-control" 
+            id="description" 
+            name="description" 
+            rows="3" 
+            placeholder="Packaging status (e.g. sealed boxes), temperature (hot/refrigerated), allergen warnings, etc."
+          >{{ form.get('description', '') }}</textarea>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label" for="contact">Organization Contact Info (Public/Demo)</label>
+          <input 
+            type="text" 
+            class="form-control" 
+            id="contact" 
+            name="contact" 
+            placeholder="e.g. canteen-manager@campus.edu or 9876543210"
+            value="{{ form.get('contact', '') }}"
+          >
+          <div class="form-text text-muted">Use official or demonstration contact information. Avoid publishing private personal phone numbers.</div>
+        </div>
+
+        <!-- Safety Disclaimer -->
+        <div class="alert alert-light border border-secondary border-opacity-25 rounded-3 d-flex align-items-start gap-2 mb-4 p-3">
+          <i class="bi bi-shield-exclamation text-warning fs-5 mt-1"></i>
+          <div class="small text-muted">
+            <strong>Food Safety Standard:</strong> Please ensure all surplus items offered were prepared under clean conditions and packaged securely. Perishable meals should be chilled or kept hot according to local public health guidelines.
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex flex-column flex-sm-row justify-content-end gap-3">
+          <a href="{{ url_for('main.listings') }}" class="btn btn-outline-secondary px-4 py-2">
+            Cancel
+          </a>
+          <button type="submit" class="btn btn-success fw-bold px-4 py-2 shadow-sm">
+            <i class="bi bi-cloud-arrow-up-fill me-1"></i>Publish Food Listing
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

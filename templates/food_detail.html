@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} - Food Details{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="custom-breadcrumb">
+  <a href="{{ url_for('main.index') }}"><i class="bi bi-house-door me-1"></i>Home</a>
+  <span class="separator">/</span>
+  <a href="{{ url_for('main.listings') }}">Food Listings</a>
+  <span class="separator">/</span>
+  <span class="text-dark fw-semibold text-truncate d-inline-block" style="max-width: 250px;">{{ item.title }}</span>
+</nav>
+
+<div class="row g-4">
+  <!-- Left Column: Detailed Food Information -->
+  <div class="col-lg-7">
+    <div class="panel-card h-100 shadow-sm">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span class="badge-category" data-category="{{ item.category }}">
+          <i class="bi bi-tag-fill me-1"></i>{{ item.category }}
+        </span>
+        <span class="badge-status {{ item.status|lower }}">
+          {{ item.status }}
+        </span>
+      </div>
+
+      <h1 class="h2 fw-bold text-dark mb-2">{{ item.title }}</h1>
+      <div class="food-provider fs-6 mb-4">
+        <i class="bi bi-building text-success"></i>
+        <span>Provided by <strong>{{ item.provider_name }}</strong></span>
+      </div>
+
+      <!-- Key Metadata Grid -->
+      <div class="row g-3 p-3 bg-light rounded-3 border mb-4">
+        <div class="col-sm-6">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-box-seam fs-4 text-success"></i>
+            <div>
+              <div class="small text-muted text-uppercase fw-semibold">Quantity Available</div>
+              <div class="fw-bold fs-5 text-dark">{{ item.quantity }} {{ item.unit }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-activity fs-4 text-primary"></i>
+            <div>
+              <div class="small text-muted text-uppercase fw-semibold">Current Status</div>
+              <div class="fw-bold fs-5 text-dark">{{ item.status }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-clock-history fs-4 text-warning"></i>
+            <div>
+              <div class="small text-muted text-uppercase fw-semibold">Estimated Expiry</div>
+              <div class="fw-bold fs-6 text-dark">{{ item.expiry_time }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-sm-6">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-alarm fs-4 text-danger"></i>
+            <div>
+              <div class="small text-muted text-uppercase fw-semibold">Pickup Deadline</div>
+              <div class="fw-bold fs-6 text-dark">{{ item.pickup_deadline or item.expiry_time }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 pt-2 border-top">
+          <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-geo-alt fs-4 text-danger"></i>
+            <div>
+              <div class="small text-muted text-uppercase fw-semibold">Pickup Location</div>
+              <div class="fw-semibold text-dark">{{ item.location }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Description & Handling -->
+      <div class="mb-4">
+        <h5 class="fw-bold text-dark mb-2">Description & Preparation Notes</h5>
+        {% if item.description %}
+          <p class="text-body bg-white p-3 rounded-3 border border-subtle mb-0" style="white-space: pre-line;">{{ item.description }}</p>
+        {% else %}
+          <p class="text-muted fst-italic">No specific description provided by the food donor.</p>
+        {% endif %}
+      </div>
+
+      <!-- Donor Contact -->
+      <div class="mb-4">
+        <h5 class="fw-bold text-dark mb-2">Donor Contact Info</h5>
+        <div class="d-flex align-items-center gap-2 text-muted">
+          <i class="bi bi-telephone-outbound text-success"></i>
+          <span>{{ item.contact if item.contact else 'In-person pickup at designated location' }}</span>
+        </div>
+      </div>
+
+      <!-- Provider simulation actions -->
+      {% if item.status == 'Available' %}
+      <div class="p-3 bg-light rounded-3 border mb-4">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="fw-semibold small text-dark"><i class="bi bi-gear-wide-connected me-1"></i>Donor Lifecycle Controls</div>
+            <div class="small text-muted">Simulate food expiration if unclaimed past pickup deadline.</div>
+          </div>
+          <form method="post" action="{{ url_for('main.expire_food_listing', food_id=item._id) }}" onsubmit="return confirm('Mark this listing as Expired? It will be removed from available donations.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">
+              <i class="bi bi-hourglass-bottom me-1"></i>Mark Expired
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="border-top pt-3 d-flex justify-content-between align-items-center small text-muted">
+        <span><i class="bi bi-calendar3 me-1"></i>Listed: {{ item.created_at.strftime('%Y-%m-%d %H:%M UTC') if item.created_at else 'Recent' }}</span>
+        <span><i class="bi bi-database me-1"></i>ID: <code>{{ item._id }}</code></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Donation Request Panel -->
+  <div class="col-lg-5">
+    <div class="panel-card shadow-sm sticky-top" style="top: 85px;">
+      {% if item.status == 'Available' %}
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="stat-icon green" style="width:40px; height:40px; font-size:1.2rem;">
+            <i class="bi bi-cart-check-fill"></i>
+          </div>
+          <div>
+            <h2 class="h4 fw-bold mb-0">Claim This Donation</h2>
+            <div class="small text-muted">For registered NGOs, shelters, & authorized volunteers</div>
+          </div>
+        </div>
+
+        <p class="small text-muted mb-3">
+          Submit a pickup claim below. MongoDB conditional atomic locking prevents duplicate claims or overselling.
+        </p>
+
+        {% if recipient_users %}
+        <div class="mb-3 p-2 bg-light rounded-2 border">
+          <label class="form-label small fw-semibold text-muted mb-1" for="quick-recipient-select">
+            <i class="bi bi-people-fill me-1 text-success"></i>Quick Select Registered NGO / Volunteer:
+          </label>
+          <select class="form-select form-select-sm" id="quick-recipient-select">
+            <option value="">-- Choose registered recipient (or enter manually) --</option>
+            {% for u in recipient_users %}
+              <option 
+                value="{{ u._id }}" 
+                data-name="{{ u.name }}" 
+                data-org="{{ u.organization }}" 
+                data-contact="{{ u.contact }}" 
+                data-role="{{ u.role }}"
+              >
+                {{ u.organization }} ({{ u.name }} &bull; {{ u.role|title }})
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+
+        <form id="donation-request-form" method="post" action="{{ url_for('main.request_donation', food_id=item._id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" id="recipient_user_id" name="recipient_user_id" value="">
+
+          <div class="mb-3">
+            <label class="form-label" for="recipient_name">Representative Name <span class="required-mark">*</span></label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="recipient_name" 
+              name="recipient_name" 
+              required 
+              placeholder="e.g. John Doe (Coordinator)"
+            >
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="organization">NGO / Recipient Organization <span class="required-mark">*</span></label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="organization" 
+              name="organization" 
+              required 
+              placeholder="e.g. City Food Bank, Robin Hood Army"
+            >
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label" for="contact">Contact Number / Email <span class="required-mark">*</span></label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="contact" 
+              name="contact" 
+              required 
+              placeholder="e.g. ngo-team@domain.org or 9876543210"
+            >
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label" for="quantity_requested">Quantity to Claim <span class="required-mark">*</span></label>
+            <div class="input-group">
+              <input 
+                type="number" 
+                class="form-control" 
+                id="quantity_requested" 
+                name="quantity_requested" 
+                min="1" 
+                max="{{ item.quantity }}" 
+                value="{{ item.quantity }}" 
+                required
+              >
+              <span class="input-group-text bg-light text-muted">{{ item.unit }}</span>
+            </div>
+            <div class="form-text">Available up to {{ item.quantity }} {{ item.unit }}. Must be &le; available.</div>
+          </div>
+
+          <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm">
+            <i class="bi bi-send-fill me-1"></i>Submit Donation Request
+          </button>
+        </form>
+
+      {% elif item.status == 'Expired' %}
+        <div class="text-center py-4">
+          <div class="empty-state-icon mb-3" style="background-color: #fee2e2; color: #ef4444;">
+            <i class="bi bi-calendar-x-fill"></i>
+          </div>
+          <h3 class="h5 fw-bold mb-2 text-danger">Listing Expired</h3>
+          <p class="small text-muted mb-4">
+            This food donation has passed its safe consumption or pickup deadline and is marked <strong>Expired</strong>. In accordance with food safety standards, expired listings cannot be requested.
+          </p>
+          <a href="{{ url_for('main.listings') }}" class="btn btn-outline-success fw-semibold">
+            <i class="bi bi-arrow-left me-1"></i>Explore Available Food
+          </a>
+        </div>
+
+      {% else %}
+        <div class="text-center py-4">
+          <div class="empty-state-icon mb-3" style="background-color: #f1f5f9; color: #64748b;">
+            <i class="bi bi-lock-fill"></i>
+          </div>
+          <h3 class="h5 fw-bold mb-2">Donations Currently Closed</h3>
+          <p class="small text-muted mb-4">
+            This food listing is currently <strong>{{ item.status }}</strong>. It is either being coordinated, already collected, or was cancelled.
+          </p>
+          <a href="{{ url_for('main.listings') }}" class="btn btn-outline-success fw-semibold">
+            <i class="bi bi-arrow-left me-1"></i>Explore Available Food
+          </a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const selectElem = document.getElementById('quick-recipient-select');
+  if (!selectElem) return;
+
+  selectElem.addEventListener('change', function () {
+    const selectedOpt = this.options[this.selectedIndex];
+    if (!selectedOpt.value) return;
+
+    document.getElementById('recipient_user_id').value = selectedOpt.value;
+    document.getElementById('recipient_name').value = selectedOpt.dataset.name || '';
+    document.getElementById('organization').value = selectedOpt.dataset.org || '';
+    document.getElementById('contact').value = selectedOpt.dataset.contact || '';
+  });
+});
+</script>
+{% endblock %}

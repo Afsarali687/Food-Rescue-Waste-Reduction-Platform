@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}Browse Food Listings{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="custom-breadcrumb">
+  <a href="{{ url_for('main.index') }}"><i class="bi bi-house-door me-1"></i>Home</a>
+  <span class="separator">/</span>
+  <span class="text-dark fw-semibold">Browse Food Listings</span>
+</nav>
+
+<!-- Page Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+  <div>
+    <h1 class="h2 fw-bold mb-1">Surplus Food Directory</h1>
+    <p class="text-muted mb-0">Browse and request verified surplus food donations across campus and local communities.</p>
+  </div>
+  <div>
+    <a href="{{ url_for('main.create_food') }}" class="btn btn-primary-custom text-nowrap">
+      <i class="bi bi-plus-circle me-1"></i>Add Food Listing
+    </a>
+  </div>
+</div>
+
+{% if not db_ready %}
+<div class="alert alert-warning border-warning shadow-sm d-flex align-items-center gap-3 mb-4" role="alert">
+  <i class="bi bi-database-exclamation fs-3 text-warning"></i>
+  <div>
+    <strong>Database Disconnected:</strong> Showing offline cached state or empty results. Check MongoDB connectivity.
+  </div>
+</div>
+{% endif %}
+
+<!-- Multi-attribute Search & Filter Controls -->
+<div class="filter-card mb-4">
+  <form method="get" action="{{ url_for('main.listings') }}" id="filter-form">
+    <div class="row g-3">
+      <!-- Search Keyword -->
+      <div class="col-12 col-md-4">
+        <label class="form-label" for="search-input">
+          <i class="bi bi-search me-1 text-muted"></i>Search Food / Provider
+        </label>
+        <input 
+          type="text" 
+          class="form-control" 
+          id="search-input" 
+          name="q" 
+          placeholder="e.g. Rice, Bakery, Canteen A..." 
+          value="{{ search }}"
+        >
+      </div>
+
+      <!-- Category Filter -->
+      <div class="col-12 col-sm-6 col-md-3">
+        <label class="form-label" for="category-select">
+          <i class="bi bi-tag me-1 text-muted"></i>Category
+        </label>
+        <select class="form-select" id="category-select" name="category">
+          <option value="all" {{ 'selected' if not selected_category or selected_category == 'all' else '' }}>All Categories</option>
+          {% for c in categories %}
+            <option value="{{ c }}" {{ 'selected' if selected_category == c else '' }}>{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Location Filter -->
+      <div class="col-12 col-sm-6 col-md-3">
+        <label class="form-label" for="location-input">
+          <i class="bi bi-geo-alt me-1 text-muted"></i>Location
+        </label>
+        <input 
+          type="text" 
+          class="form-control" 
+          id="location-input" 
+          name="location" 
+          placeholder="e.g. Main Gate, Hostel 2..." 
+          value="{{ selected_location }}"
+        >
+      </div>
+
+      <!-- Status Filter -->
+      <div class="col-12 col-sm-6 col-md-2">
+        <label class="form-label" for="status-select">
+          <i class="bi bi-activity me-1 text-muted"></i>Status
+        </label>
+        <select class="form-select" id="status-select" name="status">
+          <option value="all" {{ 'selected' if selected_status == 'all' else '' }}>All Statuses</option>
+          <option value="Available" {{ 'selected' if selected_status == 'Available' or not selected_status else '' }}>Available</option>
+          <option value="Requested" {{ 'selected' if selected_status == 'Requested' else '' }}>Requested</option>
+          <option value="Accepted" {{ 'selected' if selected_status == 'Accepted' else '' }}>Accepted</option>
+          <option value="Collected" {{ 'selected' if selected_status == 'Collected' else '' }}>Collected</option>
+          <option value="Cancelled" {{ 'selected' if selected_status == 'Cancelled' else '' }}>Cancelled</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Quick Category Pills and Actions -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mt-3 pt-3 border-top">
+      <div class="d-flex align-items-center gap-2 flex-wrap">
+        <span class="small fw-bold text-muted me-1">Quick Filter:</span>
+        <a href="{{ url_for('main.listings', status=selected_status) }}" class="filter-pill-btn {{ 'active' if not selected_category or selected_category == 'all' else '' }}">
+          All
+        </a>
+        {% for cat in categories %}
+          <a href="{{ url_for('main.listings', category=cat, status=selected_status, location=selected_location, q=search) }}" 
+             class="filter-pill-btn {{ 'active' if selected_category == cat else '' }}">
+            {{ cat }}
+          </a>
+        {% endfor %}
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success fw-bold px-4" data-no-spinner="true">
+          <i class="bi bi-filter me-1"></i>Filter
+        </button>
+        {% if search or (selected_category and selected_category != 'all') or selected_location or (selected_status and selected_status != 'Available') %}
+          <a href="{{ url_for('main.listings') }}" class="btn btn-outline-secondary" title="Clear all filters">
+            <i class="bi bi-x-circle me-1"></i>Reset
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Active Results Summary Bar -->
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4 bg-white p-3 rounded-3 border border-subtle shadow-sm">
+  <div class="d-flex align-items-center gap-2">
+    <span class="badge bg-success bg-opacity-10 text-success fw-bold px-3 py-2 rounded-pill fs-6">
+      {{ total_count }} Listing{{ 's' if total_count != 1 else '' }} Found
+    </span>
+    {% if search %}
+      <span class="badge bg-light text-dark border">
+        Keyword: "{{ search }}"
+      </span>
+    {% endif %}
+    {% if selected_category and selected_category != 'all' %}
+      <span class="badge bg-light text-dark border">
+        Category: {{ selected_category }}
+      </span>
+    {% endif %}
+    {% if selected_location %}
+      <span class="badge bg-light text-dark border">
+        Location: "{{ selected_location }}"
+      </span>
+    {% endif %}
+    {% if selected_status and selected_status != 'all' %}
+      <span class="badge bg-light text-dark border">
+        Status: {{ selected_status }}
+      </span>
+    {% endif %}
+  </div>
+  <div class="small text-muted">
+    <i class="bi bi-arrow-down-up me-1"></i>Sorted by: Newest First
+  </div>
+</div>
+
+<!-- Food Listings Grid -->
+<div class="row g-4">
+  {% for item in listings %}
+    <div class="col-md-6 col-lg-4">
+      <article class="food-card">
+        <div class="food-card-header">
+          <span class="badge-category" data-category="{{ item.category }}">
+            <i class="bi bi-tag-fill me-1"></i>{{ item.category }}
+          </span>
+          <span class="badge-status {{ item.status|lower }}">
+            {{ item.status }}
+          </span>
+        </div>
+
+        <div class="food-card-body">
+          <h3 class="food-title">{{ item.title }}</h3>
+          <div class="food-provider">
+            <i class="bi bi-building text-muted"></i>
+            <span>{{ item.provider_name }}</span>
+          </div>
+
+          <div class="food-meta-grid">
+            <div class="food-meta-item">
+              <i class="bi bi-box-seam"></i>
+              <div>
+                <span class="food-meta-label">Quantity</span>
+                <span class="food-meta-value">{{ item.quantity }} {{ item.unit }}</span>
+              </div>
+            </div>
+            <div class="food-meta-item">
+              <i class="bi bi-geo-alt"></i>
+              <div>
+                <span class="food-meta-label">Location</span>
+                <span class="food-meta-value">{{ item.location }}</span>
+              </div>
+            </div>
+            <div class="food-meta-item">
+              <i class="bi bi-clock-history"></i>
+              <div>
+                <span class="food-meta-label">Expiry Time</span>
+                <span class="food-meta-value">{{ item.expiry_time }}</span>
+              </div>
+            </div>
+            <div class="food-meta-item">
+              <i class="bi bi-alarm"></i>
+              <div>
+                <span class="food-meta-label">Pickup Deadline</span>
+                <span class="food-meta-value">{{ item.pickup_deadline or item.expiry_time }}</span>
+              </div>
+            </div>
+          </div>
+
+          {% if item.description %}
+            <p class="small text-muted text-truncate mb-0" title="{{ item.description }}">
+              {{ item.description }}
+            </p>
+          {% endif %}
+        </div>
+
+        <div class="food-card-footer">
+          <span class="small text-muted">
+            <i class="bi bi-calendar3 me-1"></i>{{ item.created_at.strftime('%b %d, %H:%M') if item.created_at else 'Recent' }}
+          </span>
+          <a href="{{ url_for('main.food_detail', food_id=item._id) }}" class="btn btn-sm btn-success fw-bold px-3">
+            {% if item.status == 'Available' %}
+              View & Request <i class="bi bi-chevron-right ms-1"></i>
+            {% else %}
+              View Details <i class="bi bi-arrow-right ms-1"></i>
+            {% endif %}
+          </a>
+        </div>
+      </article>
+    </div>
+  {% else %}
+    <div class="col-12">
+      <div class="empty-state-box">
+        <div class="empty-state-icon">
+          <i class="bi bi-search"></i>
+        </div>
+        <h3 class="h4 fw-bold mb-2">No Matching Food Listings Found</h3>
+        <p class="text-muted max-w-500 mx-auto mb-4">
+          We couldn't find any food donations matching your search filters. Try adjusting your search query, selecting "All Categories", or checking "All Statuses".
+        </p>
+        <div class="d-flex justify-content-center gap-3">
+          <a href="{{ url_for('main.listings') }}" class="btn btn-outline-success fw-semibold">
+            <i class="bi bi-arrow-clockwise me-1"></i>Clear Filters
+          </a>
+          <a href="{{ url_for('main.create_food') }}" class="btn btn-success fw-bold">
+            <i class="bi bi-plus-circle me-1"></i>Post New Donation
+          </a>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

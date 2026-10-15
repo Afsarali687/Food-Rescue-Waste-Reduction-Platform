@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}Impact Reports & Analytics | FoodRescue{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="custom-breadcrumb">
+  <a href="{{ url_for('main.index') }}"><i class="bi bi-house-door me-1"></i>Home</a>
+  <span class="separator">/</span>
+  <span class="text-dark fw-semibold">Impact Reports</span>
+</nav>
+
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-4">
+  <div>
+    <h1 class="h2 fw-bold mb-1">Impact & Waste Diversion Analytics</h1>
+    <p class="text-muted mb-0">Real-time metrics computed server-side via MongoDB Aggregation Pipelines (<code>$match</code>, <code>$group</code>, <code>$project</code>, <code>$sort</code>).</p>
+  </div>
+  <div>
+    <a href="{{ url_for('main.create_food') }}" class="btn btn-primary-custom">
+      <i class="bi bi-plus-circle me-1"></i>New Donation
+    </a>
+  </div>
+</div>
+
+{% if not db_ready %}
+<div class="alert alert-warning border-warning shadow-sm d-flex align-items-center gap-3 mb-4" role="alert">
+  <i class="bi bi-database-exclamation fs-3 text-warning"></i>
+  <div>
+    <strong>Database Disconnected:</strong> Cannot run aggregation pipelines. Please check MongoDB connection.
+  </div>
+</div>
+{% endif %}
+
+<!-- Key Metrics Row (6 cards) -->
+<div class="row g-3 g-md-4 mb-4">
+  <!-- Total Food Listings -->
+  <div class="col-sm-6 col-lg-4">
+    <div class="stat-card">
+      <div class="stat-icon green">
+        <i class="bi bi-box-seam"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Total Listings</div>
+        <div class="stat-value">{{ report.overview.total_listings }}</div>
+        <div class="stat-hint">All offerings published</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Available Listings -->
+  <div class="col-sm-6 col-lg-4">
+    <div class="stat-card">
+      <div class="stat-icon teal">
+        <i class="bi bi-check-circle-fill"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Available Food</div>
+        <div class="stat-value">{{ report.overview.available_listings }}</div>
+        <div class="stat-hint">Active and ready to claim</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expired Listings -->
+  <div class="col-sm-6 col-lg-4">
+    <div class="stat-card">
+      <div class="stat-icon" style="background-color: #fee2e2; color: #ef4444;">
+        <i class="bi bi-calendar-x"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Expired Listings</div>
+        <div class="stat-value text-danger">{{ report.overview.expired_listings }}</div>
+        <div class="stat-hint">Past safe pickup deadline</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Total Donation Requests -->
+  <div class="col-sm-6 col-lg-4">
+    <div class="stat-card">
+      <div class="stat-icon blue">
+        <i class="bi bi-chat-left-quote-fill"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Total Requests</div>
+        <div class="stat-value">{{ report.total_requests_count }}</div>
+        <div class="stat-hint">NGO and volunteer claims</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Completed Rescues -->
+  <div class="col-sm-6 col-lg-4">
+    <div class="stat-card">
+      <div class="stat-icon green">
+        <i class="bi bi-patch-check-fill"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Completed Rescues</div>
+        <div class="stat-value">{{ report.completed_audits_count }}</div>
+        <div class="stat-hint">Audited in donation_records</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rescued Food Volume -->
+  <div class="col-sm-6 col-lg-4">
+    <div class="stat-card">
+      <div class="stat-icon" style="background-color: #ecfdf5; color: #059669;">
+        <i class="bi bi-trophy-fill"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Rescued Units</div>
+        <div class="stat-value text-success">{{ report.total_rescued_quantity }}</div>
+        <div class="stat-hint">Portions successfully distributed</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: Food Quantity Listed and Rescued by Consistent Units -->
+<div class="panel-card shadow-sm mb-4">
+  <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-3">
+    <div>
+      <h2 class="h5 fw-bold mb-0">
+        <i class="bi bi-calculator me-2 text-success"></i>Food Quantity Listed &amp; Rescued (Grouped by Consistent Units)
+      </h2>
+      <p class="small text-muted mb-0">Quantities in distinct units (servings, packs, kg, boxes) aggregated independently to guarantee scientific measurement accuracy.</p>
+    </div>
+    <span class="badge bg-light text-muted border">MongoDB $group by unit</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th scope="col" class="py-2.5">Measurement Unit</th>
+          <th scope="col" class="py-2.5 text-center">Listings</th>
+          <th scope="col" class="py-2.5 text-end">Total Listed Volume</th>
+          <th scope="col" class="py-2.5 text-center">Completed Rescues</th>
+          <th scope="col" class="py-2.5 text-end">Total Rescued Volume</th>
+          <th scope="col" class="py-2.5 text-end">Diversion Efficiency</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in report.unit_breakdown %}
+          <tr>
+            <td class="py-3">
+              <span class="badge bg-secondary-subtle text-dark border px-2.5 py-1 text-uppercase fw-bold">
+                {{ u.unit }}
+              </span>
+            </td>
+            <td class="py-3 text-center fw-semibold text-muted">{{ u.listings_count }}</td>
+            <td class="py-3 text-end fw-bold text-dark">{{ u.listed_quantity }} {{ u.unit }}</td>
+            <td class="py-3 text-center fw-semibold text-muted">{{ u.records_count }}</td>
+            <td class="py-3 text-end fw-bold text-success">{{ u.rescued_quantity }} {{ u.unit }}</td>
+            <td class="py-3 text-end">
+              <div class="d-inline-flex align-items-center gap-2">
+                <div class="progress" style="width: 80px; height: 8px;">
+                  <div class="progress-bar bg-success" role="progressbar" style="width: {{ u.rescue_rate }}%;" aria-valuenow="{{ u.rescue_rate }}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+                <span class="fw-bold small text-dark">{{ u.rescue_rate }}%</span>
+              </div>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-4">No unit quantity data available yet.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Row: Breakdown by Food Category & Workflow Status -->
+<div class="row g-4 mb-4">
+  <!-- Food Category Breakdown -->
+  <div class="col-lg-7">
+    <div class="panel-card h-100 shadow-sm">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 fw-bold mb-0">
+          <i class="bi bi-pie-chart-fill me-2 text-success"></i>Breakdown by Food Category
+        </h2>
+        <span class="badge bg-light text-muted border">MongoDB $group</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Category</th>
+              <th scope="col" class="text-center">Listings</th>
+              <th scope="col" class="text-center">Available</th>
+              <th scope="col" class="text-center">Collected</th>
+              <th scope="col" class="text-end">Listed Volume</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in report.category_stats %}
+              <tr>
+                <td>
+                  <span class="badge-category" data-category="{{ s._id }}">
+                    {{ s._id or 'Other' }}
+                  </span>
+                </td>
+                <td class="text-center fw-semibold">{{ s.listings_count }}</td>
+                <td class="text-center"><span class="badge bg-success-subtle text-success border border-success-subtle">{{ s.available_count }}</span></td>
+                <td class="text-center"><span class="badge bg-primary-subtle text-primary border border-primary-subtle">{{ s.collected_count }}</span></td>
+                <td class="text-end fw-bold text-dark">{{ s.total_quantity }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="5" class="text-center text-muted py-4">No category statistics available yet.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Request Status Lifecycle Distribution -->
+  <div class="col-lg-5">
+    <div class="panel-card h-100 shadow-sm">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 fw-bold mb-0">
+          <i class="bi bi-funnel-fill me-2 text-primary"></i>Requests by Lifecycle Status
+        </h2>
+        <span class="badge bg-light text-muted border">MongoDB $group</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th scope="col">Status</th>
+              <th scope="col" class="text-center">Requests</th>
+              <th scope="col" class="text-end">Portions Claimed</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in report.request_stats %}
+              <tr>
+                <td>
+                  <span class="badge-status {{ r._id|lower }}">
+                    {{ r._id }}
+                  </span>
+                </td>
+                <td class="text-center fw-bold">{{ r.requests_count }}</td>
+                <td class="text-end fw-semibold text-muted">{{ r.total_quantity_requested }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="3" class="text-center text-muted py-4">No request status statistics available yet.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: Donation Activity Grouped by Date -->
+<div class="panel-card shadow-sm mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="h5 fw-bold mb-0">
+        <i class="bi bi-calendar3 me-2 text-primary"></i>Donation Activity Grouped by Date
+      </h2>
+      <p class="small text-muted mb-0">Grouped by timestamp using MongoDB aggregation stage <code>$dateToString: {"format": "%Y-%m-%d"}</code>.</p>
+    </div>
+    <span class="badge bg-light text-muted border">Pipeline $project &rarr; $group</span>
+  </div>
+
+  {% if report.activity_timeline %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th scope="col">Activity Date (UTC)</th>
+            <th scope="col" class="text-center">Completed Rescues</th>
+            <th scope="col" class="text-end">Portions Rescued</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for day in report.activity_timeline %}
+            <tr>
+              <td class="py-2.5 fw-semibold text-dark">
+                <i class="bi bi-calendar-check me-2 text-success"></i>{{ day._id }}
+              </td>
+              <td class="py-2.5 text-center">
+                <span class="badge bg-light text-dark border px-2.5 py-1">{{ day.rescues_count }} rescue(s)</span>
+              </td>
+              <td class="py-2.5 text-end fw-bold text-success">
+                +{{ day.total_quantity_collected }} portions
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <div class="p-4 text-center text-muted bg-light rounded-3 border">
+      <i class="bi bi-calendar-event fs-3 d-block mb-2 text-muted"></i>
+      No completed rescue audits logged yet. When claims are marked <strong>Collected</strong> in Manage Requests, daily timeline data appears here.
+    </div>
+  {% endif %}
+</div>
+
+<!-- Technical Viva Notes / Database Architecture Box -->
+<div class="panel-card shadow-sm border-success-subtle bg-light">
+  <h3 class="h6 fw-bold text-dark mb-2">
+    <i class="bi bi-mortarboard-fill text-success me-2"></i>Database Architecture &amp; Viva Reference
+  </h3>
+  <div class="row g-3 small text-muted">
+    <div class="col-md-6">
+      <div class="fw-semibold text-dark mb-1">Aggregation Pipeline Stages Used:</div>
+      <ul class="mb-0 ps-3">
+        <li><code>$match</code> &mdash; Filters non-null timestamps and active document states.</li>
+        <li><code>$project</code> &mdash; Reshapes documents and converts date objects to formatted strings with <code>$dateToString</code>.</li>
+        <li><code>$group</code> &mdash; Computes multi-attribute sums with <code>$sum</code>, <code>$cond</code>, and <code>$ifNull</code>.</li>
+        <li><code>$sort</code> &mdash; Orders results by volume or chronological timeline.</li>
+      </ul>
+    </div>
+    <div class="col-md-6">
+      <div class="fw-semibold text-dark mb-1">Transaction Safety Alternative on Standalone MongoDB:</div>
+      <p class="mb-0">
+        In local single-node MongoDB, multi-document transactions require a replica set. To ensure rock-solid consistency, this application uses <strong>Optimistic Locking</strong> with single-document atomic conditional updates (<code>find_one_and_update</code>) and the <strong>Compensating Saga Pattern</strong> to roll back reservations if subsequent operations fail.
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+FOOD RESCUE & WASTE REDUCTION PLATFORM — QUICK START (WINDOWS)
+
+1. Install Python 3.10+ and MongoDB Community Server, or use MongoDB Atlas.
+2. Open this folder in VS Code.
+3. In VS Code Terminal, run:
+   py -m venv .venv
+   .\.venv\Scripts\activate
+   pip install -r requirements.txt
+4. Copy .env.example to .env (same folder). Edit MONGO_URI if using Atlas.
+5. Make sure MongoDB is running.
+6. Optional demo listings:
+   python seed_data.py
+7. Start the website:
+   python app.py
+8. Open http://127.0.0.1:5000
+
+Pages:
+- /             Available food + dashboard
+- /food/new     Add a food donation
+- /requests     Manage donation requests
+- /reports      MongoDB aggregation reports
+- /health       Database connection check
+
+IMPORTANT:
+- Public GitHub repository must not contain .env or real personal contact data.
+- This is an academic prototype; it does not certify food safety.

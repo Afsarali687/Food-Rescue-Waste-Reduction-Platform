@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+{% block title %}Manage Requests - Food Rescue Workflow{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb" class="custom-breadcrumb">
+  <a href="{{ url_for('main.index') }}"><i class="bi bi-house-door me-1"></i>Home</a>
+  <span class="separator">/</span>
+  <span class="text-dark fw-semibold">Manage Requests</span>
+</nav>
+
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-center gap-2 mb-4">
+  <div>
+    <h1 class="h2 fw-bold mb-1">Donation Requests</h1>
+    <p class="text-muted mb-0">Track and advance claims across the 4 lifecycle stages: Requested &rarr; Accepted &rarr; Collected or Cancelled.</p>
+  </div>
+  <div>
+    <a href="{{ url_for('main.listings') }}" class="btn btn-outline-success fw-semibold">
+      <i class="bi bi-grid me-1"></i>Browse Listings
+    </a>
+  </div>
+</div>
+
+{% if not db_ready %}
+<div class="alert alert-warning border-warning shadow-sm d-flex align-items-center gap-3 mb-4" role="alert">
+  <i class="bi bi-database-exclamation fs-3 text-warning"></i>
+  <div>
+    <strong>Database Disconnected:</strong> Cannot retrieve donation requests. Check MongoDB status and refresh.
+  </div>
+</div>
+{% endif %}
+
+<!-- Workflow Guide Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="p-3 bg-white rounded-3 border shadow-xs d-flex align-items-center gap-2">
+      <span class="badge-status requested mb-0">Requested</span>
+      <span class="small text-muted">NGO submitted claim; awaiting provider approval.</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="p-3 bg-white rounded-3 border shadow-xs d-flex align-items-center gap-2">
+      <span class="badge-status accepted mb-0">Accepted</span>
+      <span class="small text-muted">Approved for pickup; coordination underway.</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="p-3 bg-white rounded-3 border shadow-xs d-flex align-items-center gap-2">
+      <span class="badge-status collected mb-0">Collected</span>
+      <span class="small text-muted">Food rescued; immutable audit logged.</span>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="p-3 bg-white rounded-3 border shadow-xs d-flex align-items-center gap-2">
+      <span class="badge-status cancelled mb-0">Cancelled</span>
+      <span class="small text-muted">Claim voided; listing restored to Available.</span>
+    </div>
+  </div>
+</div>
+
+<div class="panel-card shadow-sm p-0 overflow-hidden">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead class="table-light border-bottom">
+        <tr>
+          <th scope="col" class="py-3 px-4">Food Item</th>
+          <th scope="col" class="py-3">Claimant / Organization</th>
+          <th scope="col" class="py-3">Quantity</th>
+          <th scope="col" class="py-3">Workflow Status</th>
+          <th scope="col" class="py-3 text-end px-4">Authorized Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in requests_list %}
+          <tr>
+            <td class="py-3 px-4">
+              <a href="{{ url_for('main.food_detail', food_id=r.listing_id) }}" class="fw-bold text-dark text-decoration-none hover-underline d-inline-block mb-1">
+                {{ r.listing_title }}
+              </a>
+              <div class="small text-muted">
+                <i class="bi bi-clock me-1"></i>{{ r.created_at.strftime('%b %d, %Y %H:%M UTC') if r.created_at else 'Recent' }}
+              </div>
+            </td>
+            <td class="py-3">
+              <div class="fw-semibold text-dark">{{ r.recipient_name }}</div>
+              <div class="small text-muted"><i class="bi bi-building me-1"></i>{{ r.organization }}</div>
+              <div class="small text-muted"><i class="bi bi-envelope me-1"></i>{{ r.contact }}</div>
+            </td>
+            <td class="py-3">
+              <span class="badge bg-light text-dark border fs-6 px-2.5 py-1">
+                {{ r.quantity_requested }} portions
+              </span>
+            </td>
+            <td class="py-3">
+              <span class="badge-status {{ r.status|lower }}">
+                {{ r.status }}
+              </span>
+            </td>
+            <td class="py-3 text-end px-4">
+              {% if r.status == 'Requested' %}
+                <div class="d-inline-flex align-items-center gap-2">
+                  <!-- Accept Action (Provider/Coordinator) -->
+                  <form method="post" action="{{ url_for('main.update_request_status', request_id=r._id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="status" value="Accepted">
+                    <input type="hidden" name="actor_role" value="provider">
+                    <button type="submit" class="btn btn-sm btn-success fw-bold text-nowrap shadow-xs">
+                      <i class="bi bi-check2-circle me-1"></i>Accept
+                    </button>
+                  </form>
+                  <!-- Cancel Action -->
+                  <form method="post" action="{{ url_for('main.update_request_status', request_id=r._id) }}" class="d-inline" onsubmit="return confirm('Cancel this donation request? The food will revert to Available.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="status" value="Cancelled">
+                    <button type="submit" class="btn btn-sm btn-outline-danger fw-semibold text-nowrap">
+                      <i class="bi bi-x-circle me-1"></i>Cancel
+                    </button>
+                  </form>
+                </div>
+              {% elif r.status == 'Accepted' %}
+                <div class="d-inline-flex align-items-center gap-2">
+                  <!-- Mark Collected Action -->
+                  <form method="post" action="{{ url_for('main.update_request_status', request_id=r._id) }}" class="d-inline" onsubmit="return confirm('Confirm that this food was successfully picked up? This will write a permanent audit record in donation_records.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="status" value="Collected">
+                    <input type="hidden" name="actor_role" value="provider">
+                    <button type="submit" class="btn btn-sm btn-primary fw-bold text-nowrap shadow-xs">
+                      <i class="bi bi-box-seam me-1"></i>Mark Collected
+                    </button>
+                  </form>
+                  <!-- Cancel Action -->
+                  <form method="post" action="{{ url_for('main.update_request_status', request_id=r._id) }}" class="d-inline" onsubmit="return confirm('Cancel this accepted donation? The food listing will revert to Available.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="status" value="Cancelled">
+                    <button type="submit" class="btn btn-sm btn-outline-danger fw-semibold text-nowrap">
+                      <i class="bi bi-x-circle me-1"></i>Cancel
+                    </button>
+                  </form>
+                </div>
+              {% elif r.status == 'Collected' %}
+                <span class="badge bg-success-subtle text-success border border-success-subtle px-2.5 py-1.5 fw-semibold">
+                  <i class="bi bi-patch-check-fill me-1"></i>Collected &amp; Audited
+                </span>
+              {% elif r.status == 'Cancelled' %}
+                <span class="badge bg-secondary-subtle text-secondary border px-2.5 py-1.5 fw-semibold">
+                  <i class="bi bi-slash-circle me-1"></i>Cancelled (Listing Restored)
+                </span>
+              {% else %}
+                <span class="small text-muted">{{ r.status }}</span>
+              {% endif %}
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5" class="py-5 text-center">
+              <div class="empty-state-icon mx-auto mb-3" style="width:56px; height:56px; font-size:1.5rem;">
+                <i class="bi bi-inbox"></i>
+              </div>
+              <h5 class="fw-bold mb-1">No Donation Requests Found</h5>
+              <p class="text-muted small mb-3">When recipient organizations claim surplus food, their requests appear here.</p>
+              <a href="{{ url_for('main.listings') }}" class="btn btn-sm btn-success fw-semibold">
+                Find Food to Claim
+              </a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

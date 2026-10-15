@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+{% block title %}Home - Zero Waste Community Platform{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-banner mb-5">
+  <div class="row align-items-center g-4">
+    <div class="col-lg-8">
+      <div class="hero-badge mb-2">
+        <i class="bi bi-patch-check-fill"></i> UN SDG 2 &middot; Zero Hunger Initiative
+      </div>
+      <h1 class="hero-title">
+        Rescuing Surplus Food.<br class="d-none d-md-block">
+        Nourishing Communities.
+      </h1>
+      <p class="hero-subtitle">
+        Bridging the gap between university canteens, hostels, restaurants, and local charity networks in real time. Convert excess good food into wholesome meals instead of landfill waste.
+      </p>
+
+      <div class="d-flex flex-wrap gap-3 mb-4">
+        <a class="btn btn-light btn-lg fw-bold px-4 shadow-sm" href="{{ url_for('main.listings') }}">
+          <i class="bi bi-search me-2 text-success"></i>Browse Available Food
+        </a>
+        <a class="btn btn-outline-light btn-lg fw-semibold px-4" href="{{ url_for('main.create_food') }}">
+          <i class="bi bi-plus-circle me-2"></i>List Surplus Food
+        </a>
+      </div>
+    </div>
+
+    <div class="col-lg-4 text-center d-none d-lg-block">
+      <div class="hero-stats-badge text-start">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="stat-icon green" style="width:44px; height:44px;">
+            <i class="bi bi-shield-check fs-4"></i>
+          </div>
+          <div>
+            <div class="fw-bold text-white fs-6">Direct Impact</div>
+            <div class="small text-white-50">Verified Donors & NGOs</div>
+          </div>
+        </div>
+        <p class="small text-white-50 mb-3">
+          MongoDB enables flexible schemas for perishable foods, real-time inventory queries, and complete donation audit tracking.
+        </p>
+        <div class="border-top border-white border-opacity-10 pt-3 d-flex justify-content-between align-items-center">
+          <span class="small text-white-50">Target Database:</span>
+          <span class="badge bg-success bg-opacity-75">food_rescue_db</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Embedded Quick Search Bar -->
+  <div class="mt-4 pt-4 border-top border-white border-opacity-10">
+    <form class="row g-2 align-items-center" method="get" action="{{ url_for('main.listings') }}">
+      <div class="col-12 col-md-5">
+        <div class="input-group">
+          <span class="input-group-text bg-white border-0 text-muted"><i class="bi bi-search"></i></span>
+          <input type="text" class="form-control border-0 py-2" name="q" placeholder="Search food name, canteen, or cuisine..." aria-label="Search food">
+        </div>
+      </div>
+      <div class="col-12 col-md-4">
+        <select class="form-select border-0 py-2" name="category" aria-label="Filter by category">
+          <option value="">All Food Categories</option>
+          {% for cat in categories %}
+            <option value="{{ cat }}">{{ cat }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-3">
+        <button type="submit" class="btn btn-success w-100 py-2 fw-bold" data-no-spinner="true">
+          <i class="bi bi-funnel me-1"></i>Search Food
+        </button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- Database Disconnected Notice -->
+{% if not db_ready %}
+<div class="alert alert-warning border-warning shadow-sm d-flex align-items-center gap-3 mb-4" role="alert">
+  <i class="bi bi-database-exclamation fs-3 text-warning"></i>
+  <div>
+    <strong>Database Disconnected:</strong> Could not connect to MongoDB at <code>mongodb://127.0.0.1:27017/</code>. The application is running in read-only offline fallback mode. Please start MongoDB Community Server and refresh this page.
+  </div>
+</div>
+{% endif %}
+
+<!-- Live Metric Summary Cards -->
+<div class="row g-3 g-md-4 mb-5">
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon green">
+        <i class="bi bi-basket2-fill"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Available Food</div>
+        <div class="stat-value">{{ stats.available }}</div>
+        <div class="stat-hint">Ready for pickup</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon amber">
+        <i class="bi bi-hourglass-split"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Active Requests</div>
+        <div class="stat-value">{{ stats.requested }}</div>
+        <div class="stat-hint">Requested / Accepted</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon teal">
+        <i class="bi bi-check2-circle"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Rescued Meals</div>
+        <div class="stat-value">{{ stats.collected }}</div>
+        <div class="stat-hint">Successfully collected</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-6 col-lg-3">
+    <div class="stat-card">
+      <div class="stat-icon blue">
+        <i class="bi bi-database-check"></i>
+      </div>
+      <div class="stat-info">
+        <div class="stat-label">Total Listings</div>
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-hint">Recorded donations</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- How It Works Section -->
+<section class="mb-5">
+  <div class="text-center max-w-700 mx-auto mb-4">
+    <span class="badge bg-success bg-opacity-10 text-success fw-bold px-3 py-2 rounded-pill text-uppercase">
+      Streamlined 3-Step Process
+    </span>
+    <h2 class="display-6 fw-bold mt-2 mb-2">How Food Rescue Works</h2>
+    <p class="text-muted">An efficient, paperless workflow built specifically for rapid turnaround of perishable meals.</p>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-4">
+      <div class="step-card">
+        <div class="step-number">01</div>
+        <div class="step-icon">
+          <i class="bi bi-card-checklist"></i>
+        </div>
+        <h4 class="h5 fw-bold mb-2">1. Post Surplus Food</h4>
+        <p class="text-muted small mb-0">
+          Canteens, caterers, and hostel mess managers publish excess portions with quantity, food category, pickup location, and expiry deadline.
+        </p>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="step-card">
+        <div class="step-number">02</div>
+        <div class="step-icon" style="background-color: var(--accent-amber-subtle); color: var(--accent-amber);">
+          <i class="bi bi-send-check"></i>
+        </div>
+        <h4 class="h5 fw-bold mb-2">2. NGOs Claim Donations</h4>
+        <p class="text-muted small mb-0">
+          Authorized charities, local food shelters, and volunteer teams review live listings and submit reservation requests for needed portions.
+        </p>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="step-card">
+        <div class="step-number">03</div>
+        <div class="step-icon" style="background-color: var(--accent-teal-subtle); color: var(--accent-teal);">
+          <i class="bi bi-bicycle"></i>
+        </div>
+        <h4 class="h5 fw-bold mb-2">3. Pickup & Redistribution</h4>
+        <p class="text-muted small mb-0">
+          Providers accept requests, pickup is coordinated before the deadline, and meals are delivered fresh to community beneficiaries.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Recently Added Food Listings Section -->
+<section class="mb-5">
+  <div class="d-flex flex-column flex-sm-row justify-content-between align-items-sm-end gap-2 mb-4">
+    <div>
+      <h2 class="h3 fw-bold mb-1">Recently Added Food Listings</h2>
+      <p class="text-muted mb-0">Fresh surplus donations currently available for immediate claim and pickup.</p>
+    </div>
+    <div>
+      <a href="{{ url_for('main.listings') }}" class="btn btn-outline-success fw-semibold text-nowrap">
+        View All Listings ({{ stats.available }}) <i class="bi bi-arrow-right ms-1"></i>
+      </a>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    {% for item in listings %}
+      <div class="col-md-6 col-lg-4">
+        <article class="food-card">
+          <div class="food-card-header">
+            <span class="badge-category" data-category="{{ item.category }}">
+              <i class="bi bi-tag-fill me-1"></i>{{ item.category }}
+            </span>
+            <span class="badge-status {{ item.status|lower }}">
+              {{ item.status }}
+            </span>
+          </div>
+
+          <div class="food-card-body">
+            <h3 class="food-title">{{ item.title }}</h3>
+            <div class="food-provider">
+              <i class="bi bi-building text-muted"></i>
+              <span>{{ item.provider_name }}</span>
+            </div>
+
+            <div class="food-meta-grid">
+              <div class="food-meta-item">
+                <i class="bi bi-box-seam"></i>
+                <div>
+                  <span class="food-meta-label">Quantity</span>
+                  <span class="food-meta-value">{{ item.quantity }} {{ item.unit }}</span>
+                </div>
+              </div>
+              <div class="food-meta-item">
+                <i class="bi bi-geo-alt"></i>
+                <div>
+                  <span class="food-meta-label">Location</span>
+                  <span class="food-meta-value">{{ item.location }}</span>
+                </div>
+              </div>
+              <div class="food-meta-item">
+                <i class="bi bi-clock-history"></i>
+                <div>
+                  <span class="food-meta-label">Expiry Time</span>
+                  <span class="food-meta-value">{{ item.expiry_time }}</span>
+                </div>
+              </div>
+              <div class="food-meta-item">
+                <i class="bi bi-alarm"></i>
+                <div>
+                  <span class="food-meta-label">Pickup Deadline</span>
+                  <span class="food-meta-value">{{ item.pickup_deadline or item.expiry_time }}</span>
+                </div>
+              </div>
+            </div>
+
+            {% if item.description %}
+              <p class="small text-muted text-truncate mb-0" title="{{ item.description }}">
+                {{ item.description }}
+              </p>
+            {% endif %}
+          </div>
+
+          <div class="food-card-footer">
+            <span class="small text-muted">
+              <i class="bi bi-calendar3 me-1"></i>{{ item.created_at.strftime('%b %d, %H:%M') if item.created_at else 'Recent' }}
+            </span>
+            <a href="{{ url_for('main.food_detail', food_id=item._id) }}" class="btn btn-sm btn-success fw-bold px-3">
+              View & Request <i class="bi bi-chevron-right ms-1"></i>
+            </a>
+          </div>
+        </article>
+      </div>
+    {% else %}
+      <div class="col-12">
+        <div class="empty-state-box">
+          <div class="empty-state-icon">
+            <i class="bi bi-cup-hot"></i>
+          </div>
+          <h3 class="h4 fw-bold mb-2">No Food Listings Available Right Now</h3>
+          <p class="text-muted max-w-500 mx-auto mb-4">
+            All surplus donations have either been claimed or no donations have been posted yet today.
+          </p>
+          <div class="d-flex justify-content-center gap-3">
+            <a href="{{ url_for('main.create_food') }}" class="btn btn-success fw-bold">
+              <i class="bi bi-plus-circle me-1"></i>Post First Food Listing
+            </a>
+            <a href="{{ url_for('main.listings', status='all') }}" class="btn btn-outline-secondary">
+              View Past Listings
+            </a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Academic & SDG Mission Banner -->
+<section class="p-4 p-md-5 rounded-4 bg-light border border-light-subtle shadow-sm mb-4">
+  <div class="row align-items-center g-4">
+    <div class="col-md-8">
+      <h3 class="h4 fw-bold mb-2">Empowering Sustainable Campus & Community Food Management</h3>
+      <p class="text-muted mb-0">
+        According to UNEP, roughly one-third of all food produced is lost or wasted. By leveraging MongoDB's flexible document structure and high-performance querying, our platform ensures excess meals reach dining halls, shelter homes, and orphanages before expiration.
+      </p>
+    </div>
+    <div class="col-md-4 text-md-end">
+      <a href="{{ url_for('main.reports') }}" class="btn btn-primary-custom">
+        <i class="bi bi-pie-chart-fill me-1"></i>View Waste Diverted Analytics
+      </a>
+    </div>
+  </div>
+</section>
+{% endblock %}
